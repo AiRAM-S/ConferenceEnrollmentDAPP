@@ -8,7 +8,7 @@
 
 ## **实验1 会议报名登记系统的基本功能与实现**
 
-本阶段需要初步编写会议报名系统的solidity代码。函数接口与逻辑与实验指导一致，在此不赘述实现逻辑，仅对指导中的
+本阶段需要初步编写会议报名系统的solidity代码。函数接口与逻辑与实验指导一致，在此不赘述实现逻辑，仅对指导中的问题进行回答：
 
 1） 在合约的construct函数指定管理员身份。合约中有administrator成员，将该成员设置为msg.sender
 
@@ -44,8 +44,6 @@
     }
 ```
 
-
-
 ​		```revert```：顾名思义，该函数负责显式地撤销当前的交易并返回错误信息，但函数本身并不执行条件判断。其用法一般为
 
 ```go
@@ -62,13 +60,15 @@ if(condition){
 
 ## **实验2 **学习用Truffle **组件部署和测试合约。**
 
-首先利用wsl安装了node.js以及truffle：
+本阶段需要使用Ganache搭建本地私链，并使用truffle将之前实现在remix的合约代码部署在Ganache私链上。
+
+首先在wsl2 ubuntu20.04安装了node.js以及truffle：
 
 ![image-20241127235030416](C:\Users\AiRAM\AppData\Roaming\Typora\typora-user-images\image-20241127235030416.png)
 
 ![image-20241127235014988](C:\Users\AiRAM\AppData\Roaming\Typora\typora-user-images\image-20241127235014988.png)
 
-而后安装了ganache windows版本：
+而后在宿主机安装了ganache windows版本：
 
 ![image-20241127235920166](C:\Users\AiRAM\AppData\Roaming\Typora\typora-user-images\image-20241127235920166.png)
 
@@ -78,7 +78,7 @@ if(condition){
 
 但此时truffle并没有按照实验指导生成对应的```Migrations.sol``` 和```1_initial_migration.js```文件。查看truffle官方的示例项目```metacoin```，发现其目录中同样没有这两个文件，可能的原因是目前的版本已经不需要Migrations合约进行迁移了。
 
-将之前编写的```Enrollment.sol```复制到contracts文件夹下，并为其编写了测试合约```TestEnrollment.sol```。按照实验指导编写了```1_deploy_contracts.js```。由于在这里还用到了ConvertLib合约，保险起见在```contracts```文件夹下参考```metacoin```编写了```ConvertLib.sol```:
+将之前编写的```Enrollment.sol```复制到contracts文件夹下，并为其编写了测试合约```TestEnrollment.sol```。按照实验指导编写了```1_deploy_contracts.js```。由于在这里还用到了ConvertLib合约，保险起见在```contracts```文件夹下参考```metacoin```编写了```ConvertLib.sol```（之后其实并没有用到）:
 
 ```solidity
 // SPDX-License-Identifier: MIT
@@ -94,20 +94,17 @@ library ConvertLib{
 }
 ```
 
-在Ganache利用```truffle-config.js```运行了一个以太坊私链：
-![image-20241128214638990](C:\Users\AiRAM\AppData\Roaming\Typora\typora-user-images\image-20241128214638990.png)
+而后要尝试将truffle中的代码部署到ganache的私链上。由于我的truffle运行在WSL2上，而我的ganache运行在宿主机上，所以首先需要在宿主机上允许来自WSL和7545的流量（以下以管理员身份启动powershell并执行）。
 
-而后要尝试将truffle中的代码部署到ganache的私链上。由于我的truffle运行在WSL2上，而我的ganache运行在宿主机上，所以首先需要在宿主机上允许来自WSL和7545的流量。
-
-```
+```shell
 New-NetFirewallRule -DisplayName "Allow Ganache 7545" -Direction Inbound -LocalPort 7545 -Protocol TCP -Action Allow
 
 New-NetFirewallRule -DisplayName "Ganache on WSL" -Direction Inbound -LocalPort 7545 -Protocol TCP -Action Allow
 ```
 
-而后修改truffle-config.js中的host，将localhost修改为WSL的IPv4地址，可以在宿主机上运行```ipconfig```查看：
+而后修改truffle-config.js中的host，将其从localhost修改为WSL的IPv4地址，可以在宿主机上运行```ipconfig```查看：
 
-```
+```shell
 以太网适配器 vEthernet (WSL (Hyper-V firewall)):
 
    连接特定的 DNS 后缀 . . . . . . . :
@@ -117,7 +114,7 @@ New-NetFirewallRule -DisplayName "Ganache on WSL" -Direction Inbound -LocalPort 
    默认网关. . . . . . . . . . . . . :
 ```
 
-最后得到```truffle-config.js```文件如下（仅保留了修改的部分）：
+最后得到```truffle-config.js```文件如下（仅保留了修改的部分，将solc从0.8.20降级至了0.8.13，用于解决'hit-an-invalid-opcode-while-deploying'报错）：
 
 ```
 module.exports = {
@@ -140,6 +137,9 @@ module.exports = {
 };
 ```
 
+在Ganache利用```truffle-config.js```运行了一个以太坊私链：
+![image-20241128214638990](C:\Users\AiRAM\AppData\Roaming\Typora\typora-user-images\image-20241128214638990.png)
+
 接下来使用```truffle migrate```命令将编写好的合约部署到ganache私链上。
 
 ![image-20241206120142259](C:\Users\AiRAM\AppData\Roaming\Typora\typora-user-images\image-20241206120142259.png)
@@ -157,19 +157,19 @@ module.exports = {
 
 两个合约的部署交易被打包在了1号和2号两个区块里。
 
-利用truffle和ganache的部署过程包括：truffle对需要部署的合约进行编译，编译生成字节码后，会从Ganache的当前地址向0x0发送包含字节码的一笔交易，这笔交易会被（Ganache自动）打包进区块，而后得到合约的唯一地址。下图是Ganache上对应的这两笔交易，以及它们对应的区块。
+利用truffle和ganache的部署过程包括：truffle对需要部署的合约进行编译，生成字节码后，会从Ganache的当前地址向0x0发送包含字节码的一笔交易，这笔交易会被（Ganache自动）打包进区块，而后得到合约的唯一地址。下图是Ganache上对应的这两笔交易，以及它们对应的区块。
 
 ![image-20241206133639673](C:\Users\AiRAM\AppData\Roaming\Typora\typora-user-images\image-20241206133639673.png)
 ![image-20241206135114974](C:\Users\AiRAM\AppData\Roaming\Typora\typora-user-images\image-20241206135114974.png)
 
 ### **通过web3.js连接前端**
 
-这一阶段的实验目标是使用下发的lab7-frontend，将前端用户行为与合约调用串联起来。文件夹中的代码是一个基于```create-react-app```搭建的react前端界面，核心修改包括：
+这一阶段的实验目标是使用下发的lab7-frontend框架，将前端用户行为与合约调用串联起来。下发框架是一个基于```create-react-app```搭建的react前端界面，核心修改包括：
 
-1. ```src/components```: 为前端上每一个组件都设置了一个文件夹。对于每一个组件，需要在**mapDispatchToProps**函数中实现```submit```函数，将表单中填入的数据处理后，调用```contract.methods.xxx.send()```函数（表单类为send，非表单为call）调用对应的合约函数；
+1. ```src/components```: 为前端上每一个组件都设置了一个文件夹。对于每一个组件，需要在**mapDispatchToProps**函数中实现```submit```函数，将表单中填入的数据进行处理后，调用```contract.methods.xxx.send()```函数（表单类为send，非表单为call）调用对应的合约函数；
 2. ```contracts/contract.js```，需要在其中指定合约的部署地址，以及合约的ABI。
 
-实验过程中，由于版本更新，对上述文件夹中部分函数依据报错信息进行了重构。例如，下发代码中使用window.web3.eth.accounts[0]获取发送交易用户的地址，然而web3在```contract.js```中的初始化方法已经被弃用，这会导致metamask钱包无法连接到前端app上，并使得web3无法正常初始化，进而影响所有web3的方法调用，同时使用accounts直接获取地址的方式也不被支持。因此在```contract.js```里修改了web3的初始化方法，改用window.ethereum进行初始化：
+实验过程中，由于版本更新，对上述文件夹中部分函数依据报错信息进行了重构。例如，下发代码中使用window.web3.eth.accounts[0]获取当前用户的地址，用于支付交易费用等，然而web3在```contract.js```中的初始化方法已经被弃用，这会导致metamask钱包无法连接到前端app上，并使得web3无法正常初始化，进而影响所有web3的方法调用，同时使用accounts直接获取地址的方式也不被支持。因此在```contract.js```里修改了web3的初始化方法，改用window.ethereum进行初始化：
 
 ```javascript
 // window.web3.currentProvider为当前浏览器的web3 Provider
